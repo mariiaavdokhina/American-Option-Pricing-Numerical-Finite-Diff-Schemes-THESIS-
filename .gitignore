@@ -1,0 +1,24 @@
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.DS_Store
+.env
+.vscode/
+
+# LaTeX files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Python virtual environments
+venv/
+.venv/
+
+# macOS
+.DS_Store
