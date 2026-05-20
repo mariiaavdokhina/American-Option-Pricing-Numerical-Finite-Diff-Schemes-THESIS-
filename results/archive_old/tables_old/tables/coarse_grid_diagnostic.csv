@@ -1,0 +1,4 @@
+method,N,M,dt,price_near_K,min_value,max_value,runtime_seconds,stable,oscillations,grid_points_estimated,time_steps,linear_systems_solved,operator_evaluations
+Explicit,50,500,0.002,5.2727861343574896,0.0,100.0,0.05271987500600517,True,No,51,500,0,500
+Implicit,50,500,0.002,5.266956650807077,0.0,100.0,0.00830558396410197,True,No,51,500,500,0
+Rannacher,50,500,0.002,5.269849301808501,0.0,100.0,0.010947374976240098,True,No,51,500,500,498

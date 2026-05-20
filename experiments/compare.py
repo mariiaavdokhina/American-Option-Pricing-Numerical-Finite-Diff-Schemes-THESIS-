@@ -20,6 +20,12 @@ METHODS = [
     ('Rannacher', rannacher_american_put),
 ]
 
+METHOD_COLORS = {
+    'Explicit': 'green',
+    'Implicit': 'blue',
+    'Rannacher': 'red',
+}
+
 def is_stable(values: np.ndarray, K: float) -> bool:
     if np.any(np.isnan(values)) or np.any(np.isinf(values)):
         return False
@@ -29,12 +35,30 @@ def is_stable(values: np.ndarray, K: float) -> bool:
         return False
     return True
 
-def has_oscillations(values: np.ndarray, tolerance: float = 1e-8) -> bool:
+def has_oscillations(
+    values: np.ndarray,
+    S: np.ndarray,
+    K: float,
+    window: float = 40.0,
+    tolerance: float = 1e-6,
+) -> bool:
     """
-    Diagnostic for visible/qualitative oscillations
+    Detects local oscillations near the strike
     """
-    diffs = np.diff(values)
-    return bool(np.any(diffs > tolerance))
+    mask = (S >= K - window) & (S <= K + window)
+    local_values = values[mask]
+    if len(local_values) < 5:
+        return False
+    diffs = np.diff(local_values)
+    # ignore tiny numerical noise
+    diffs[np.abs(diffs) < tolerance] = 0.0
+    signs = np.sign(diffs)
+    signs = signs[signs != 0]
+    if len(signs) < 3:
+        return False
+    sign_changes = np.sum(signs[1:] != signs[:-1])
+
+    return bool(sign_changes >= 2)
 
 def complexity_counts(method_name: str, grid: Grid, damping_steps: int = 2) -> dict:
     """
@@ -66,7 +90,7 @@ def measure_method(method_name, solver, grid, reference_on_grid=None):
     end = time.perf_counter()
     idx = np.argmin(np.abs(grid.S - grid.K))
     stable = is_stable(values, grid.K)
-    oscillations = has_oscillations(values)
+    oscillations = has_oscillations(values, grid.S, grid.K)
     result = {
         'method': method_name,
         'N': grid.N,
@@ -158,7 +182,7 @@ def run_main_comparison():
     print('\nQualitative final comparison:')
     print(qualitative_table)
 
-    # Full price plot
+    # Plot 1: full price plot
     plt.figure(figsize=(8, 5))
     for result in results:
         plt.plot(
@@ -166,11 +190,12 @@ def run_main_comparison():
             result['values'],
             linewidth=2,
             label=result['method'],
+            color=METHOD_COLORS[result['method']],
         )
 
-    plt.xlabel('Underlying Asset Price (S)')
-    plt.ylabel('Option Value')
-    plt.title('American Put Option Price: Method Comparison')
+    plt.xlabel('Underlying asset price (S)')
+    plt.ylabel('Option value')
+    plt.title('American put option price: method comparison')
     plt.grid(alpha=0.3)
     plt.legend()
     plt.savefig(
@@ -180,7 +205,7 @@ def run_main_comparison():
     )
     plt.close()
 
-    # Zoom around strike
+    # Plot 2: zoom around strike
     plt.figure(figsize=(8, 5))
     mask = (grid.S >= 80) & (grid.S <= 120)
     for result in results:
@@ -189,10 +214,11 @@ def run_main_comparison():
             result['values'][mask],
             linewidth=2,
             label=result['method'],
+            color=METHOD_COLORS[result['method']],
         )
-    plt.xlabel('Underlying Asset Price (S)')
-    plt.ylabel('Option Value')
-    plt.title('American Put Option Price: Zoom Around Strike')
+    plt.xlabel('Underlying asset price (S)')
+    plt.ylabel('Option value')
+    plt.title('American put option price: zoom around strike')
     plt.grid(alpha=0.3)
     plt.legend()
     plt.savefig(
@@ -202,10 +228,95 @@ def run_main_comparison():
     )
     plt.close()
 
+    # Plot 3: absolute errors
+    plt.figure(figsize=(8, 5))
+
+    for result in results:
+        errors = np.abs(result['values'] - reference_on_grid)
+        plt.plot(
+            grid.S,
+            errors,
+            linewidth=2,
+            label=result['method'],
+            color=METHOD_COLORS[result['method']],
+        )
+
+    plt.xlabel('Underlying asset price (S)')
+    plt.ylabel('Absolute error vs benchmark')
+    plt.title('Absolute error relative to refined Rannacher benchmark')
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.savefig(
+        'results/figures/final_method_absolute_errors.png',
+        dpi=300,
+        bbox_inches='tight',
+    )
+    plt.close()
+
+    # Plot 4: absolute errors, zoom around strike
+    plt.figure(figsize=(8, 5))
+
+    mask = (grid.S >= 80) & (grid.S <= 120)
+
+    for result in results:
+        errors = np.abs(result['values'] - reference_on_grid)
+        plt.plot(
+            grid.S[mask],
+            errors[mask],
+            linewidth=2,
+            label=result['method'],
+            color=METHOD_COLORS[result['method']],
+        )
+
+    plt.xlabel('Underlying asset price (S)')
+    plt.ylabel('Absolute error vs benchmark')
+    plt.title('Absolute error near the strike price')
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.savefig(
+        'results/figures/final_method_absolute_errors_zoom.png',
+        dpi=300,
+        bbox_inches='tight',
+    )
+    plt.close()
+
+    rannacher_values = next(
+    result['values'] for result in results if result['method'] == 'Rannacher'
+)
+
+    # Plot 5: difference from Rannacher
+    plt.figure(figsize=(8, 5))
+
+    for result in results:
+        if result['method'] == 'Rannacher':
+            continue
+
+        difference = result['values'] - rannacher_values
+
+        plt.plot(
+            grid.S,
+            difference,
+            linewidth=2,
+            label=f"{result['method']} - Rannacher",
+            color=METHOD_COLORS[result['method']],
+        )
+
+    plt.axhline(0, linewidth=1, color='black')
+    plt.xlabel('Underlying asset price (S)')
+    plt.ylabel('Price difference')
+    plt.title('Difference from Rannacher solution')
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.savefig(
+        'results/figures/difference_from_rannacher.png',
+        dpi=300,
+        bbox_inches='tight',
+    )
+    plt.close()
+
 def run_temporal_order_experiment():
     """
-    Estimates recovered temporal order by fixing N and comparing against
-    a very fine time-grid reference
+    Estimates recovered temporal order
     """
     os.makedirs('results/tables', exist_ok=True)
     N = 200
@@ -235,7 +346,7 @@ def run_temporal_order_experiment():
                 'previous_M': previous_M,
                 'recovered_temporal_order': recovered_order,
                 'stable': is_stable(values, grid.K),
-                'oscillations': 'Yes' if has_oscillations(values) else 'No',
+                'oscillations': 'Yes' if has_oscillations(values, grid.S, grid.K) else 'No',
             })
 
             previous_error = error
