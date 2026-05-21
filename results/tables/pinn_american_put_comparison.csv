@@ -1,0 +1,2 @@
+method,N_evaluation,training_epochs,price_near_K,reference_price_near_K,pointwise_error_near_K,max_absolute_error,mean_absolute_error,rmse,runtime_seconds,stable
+PINN,200,8000,0.12795816,5.88681460225379,5.758856438634749,5.758856438634749,0.3586738213841447,1.0941936850369944,397.79367333301343,True
