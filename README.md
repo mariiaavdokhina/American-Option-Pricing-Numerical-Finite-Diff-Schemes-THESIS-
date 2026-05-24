@@ -33,7 +33,7 @@ This folder contains the core implementation of the finite difference methods us
 - `metrics.py`   
   Contains functions used to evaluate numerical accuracy and compare solutions.
 
-- `stability.py`
+- `stability.py`   
   An older file version of a stability evaluation for qualitative metrics.
 
 ### `experiments/`
