@@ -1,4 +1,4 @@
-Python ver. 3.13+
+Python ver. 3.11.4
 numpy
 scipy
 pandas
